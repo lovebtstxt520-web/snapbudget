@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#eef3f1">
 <link rel="manifest" href="manifest.json">
+<script src="config.js"></script>
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>SnapBudget</title>
@@ -284,7 +285,7 @@ ul{list-style:none;margin:0;padding:0}
 <script>
 // ===== CONFIG =====
 const SUPABASE_URL = "https://iefrfqgvuperizvrxpsi.supabase.co";
-const SUPABASE_KEY = "PASTE_PUBLISHABLE_KEY_HERE"; // Supabase > Project Settings > API Keys > Publishable key (safe for the browser)
+const SUPABASE_KEY = window.SB_KEY || "";           // set in config.js (Publishable key, safe for the browser)
 const ENABLE_GOOGLE = false;                         // set true only after Google login is set up in Supabase
 
 // ===== TRANSLATIONS (every language must have exactly the same keys) =====
