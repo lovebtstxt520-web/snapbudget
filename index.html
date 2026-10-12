@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<title>SnapBudget</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  body { background:#0f172a; color:#e2e8f0; -webkit-tap-highlight-color:transparent; }
+  .card { background:#1e293b; border-radius:1.25rem; }
+  .bar { transition: width .8s cubic-bezier(.2,.8,.2,1), background-color .4s; }
+  .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="min-h-screen pb-32">
+<div class="max-w-md mx-auto p-4 space-y-4">
+
+  <header class="flex items-center justify-between pt-2">
+    <div>
+      <h1 class="text-xl font-bold">SnapBudget</h1>
+      <p id="today" class="text-xs text-slate-400"></p>
+    </div>
+    <button id="btnSettings" class="text-sm text-slate-300 bg-slate-800 px-3 py-1.5 rounded-full">⚙️ 預算</button>
+  </header>
+
+  <!-- 每日預算 -->
+  <section class="card p-5">
+    <div class="flex items-end justify-between">
+      <div>
+        <p class="text-xs text-slate-400">今日已花</p>
+        <p class="text-3xl font-bold"><span id="spent">0</span> <span id="cur" class="text-base text-slate-400">THB</span></p>
+      </div>
+      <div class="text-right">
+        <p class="text-xs text-slate-400">剩餘</p>
+        <p id="left" class="text-xl font-semibold text-emerald-400">0</p>
+      </div>
+    </div>
+    <div class="mt-4 h-4 bg-slate-700 rounded-full overflow-hidden">
+      <div id="bar" class="bar h-full bg-emerald-400 rounded-full" style="width:0%"></div>
+    </div>
+    <div class="mt-2 flex justify-between text-xs text-slate-400">
+      <span id="pct">0%</span><span>每日預算 <span id="budget">0</span></span>
+    </div>
+  </section>
+
+  <!-- 本週 -->
+  <section class="card p-5">
+    <div class="flex justify-between items-center mb-2">
+      <h2 class="font-semibold">本週累積</h2>
+      <p class="text-sm text-slate-400">共 <span id="weekTotal" class="text-slate-100 font-semibold">0</span></p>
+    </div>
+    <canvas id="weekChart" height="120"></canvas>
+  </section>
+
+  <!-- 分類 -->
+  <section class="card p-5">
+    <h2 class="font-semibold mb-2">今日分類</h2>
+    <div class="flex items-center gap-4">
+      <div class="w-32"><canvas id="catChart"></canvas></div>
+      <ul id="catLegend" class="text-sm space-y-1 flex-1"></ul>
+    </div>
+    <p id="catEmpty" class="text-sm text-slate-500 hidden">還沒有記錄，拍一張試試</p>
+  </section>
+
+  <!-- 今日明細 -->
+  <section class="card p-5">
+    <h2 class="font-semibold mb-2">今日明細</h2>
+    <ul id="list" class="divide-y divide-slate-700"></ul>
+    <p id="listEmpty" class="text-sm text-slate-500">尚無記錄</p>
+  </section>
+</div>
+
+<!-- 底部按鈕 -->
+<div class="fixed bottom-0 inset-x-0 p-4 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
+  <div class="max-w-md mx-auto flex gap-3">
+    <label class="flex-1 text-center bg-emerald-500 active:bg-emerald-600 text-slate-900 font-bold py-4 rounded-2xl cursor-pointer">
+      📷 隨手記
+      <input id="file" type="file" accept="image/*" class="hidden">
+    </label>
+    <button id="btnManual" class="bg-slate-700 px-5 rounded-2xl text-sm">✍️ 手動</button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center z-50">
+  <div class="text-center">
+    <div class="spin w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full mx-auto"></div>
+    <p class="mt-3 text-sm">AI 辨識中…</p>
+  </div>
+</div>
+
+<!-- 確認視窗 -->
+<div id="modal" class="fixed inset-0 bg-black/60 hidden items-end z-40">
+  <div class="card w-full max-w-md mx-auto rounded-b-none p-5 space-y-3">
+    <div class="flex justify-between items-center">
+      <h3 class="font-bold">確認這筆消費</h3>
+      <span id="conf" class="text-xs px-2 py-0.5 rounded-full bg-slate-700"></span>
+    </div>
+    <img id="preview" class="hidden w-full max-h-40 object-contain rounded-lg bg-slate-900">
+    <p id="warn" class="hidden text-xs text-amber-300 bg-amber-900/30 rounded-lg p-2"></p>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="col-span-2">
+        <label class="text-xs text-slate-400">金額</label>
+        <input id="fAmount" type="number" step="0.01" inputmode="decimal" class="w-full bg-slate-900 rounded-lg p-2">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">幣別</label>
+        <input id="fCur" class="w-full bg-slate-900 rounded-lg p-2 uppercase">
+      </div>
+    </div>
+    <div>
+      <label class="text-xs text-slate-400">商家 / 項目</label>
+      <input id="fMerchant" class="w-full bg-slate-900 rounded-lg p-2">
+    </div>
+    <div>
+      <label class="text-xs text-slate-400">分類</label>
+      <select id="fCat" class="w-full bg-slate-900 rounded-lg p-2"></select>
+    </div>
+    <div class="flex gap-3 pt-1">
+      <button id="btnCancel" class="flex-1 bg-slate-700 py-3 rounded-xl">取消</button>
+      <button id="btnSave" class="flex-1 bg-emerald-500 text-slate-900 font-bold py-3 rounded-xl">✅ 確認入帳</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS = {
+  "Food & Beverage": { label:"餐飲", color:"#f59e0b" },
+  "Transport":       { label:"交通", color:"#38bdf8" },
+  "Shopping":        { label:"購物", color:"#a78bfa" },
+  "Groceries":       { label:"超市雜貨", color:"#34d399" },
+  "Entertainment":   { label:"娛樂", color:"#f472b6" },
+  "Bills":           { label:"帳單", color:"#fb7185" },
+  "Health":          { label:"醫療", color:"#2dd4bf" },
+  "Other":           { label:"其他", color:"#94a3b8" },
+};
+const $ = id => document.getElementById(id);
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+let settings = load("sb_settings", { budget: 500, currency: "THB" });
+let entries  = load("sb_entries", []);
+let pendingImg = null;
+
+const dayKey = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`; };
+const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+$("today").textContent = new Date().toLocaleDateString("zh-TW", { month:"long", day:"numeric", weekday:"long" });
+$("fCat").innerHTML = Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join("");
+
+// ---------- 圖表 ----------
+let weekChart, catChart;
+function render() {
+  const today = dayKey(new Date());
+  const todays = entries.filter(e => dayKey(e.ts) === today);
+  const spent = todays.reduce((s,e) => s + e.amount, 0);
+  const left = settings.budget - spent;
+  const pct = settings.budget > 0 ? Math.min(100, spent / settings.budget * 100) : 0;
+
+  $("spent").textContent = fmt(spent);
+  $("cur").textContent = settings.currency;
+  $("left").textContent = fmt(left);
+  $("left").className = "text-xl font-semibold " + (left < 0 ? "text-rose-400" : "text-emerald-400");
+  $("budget").textContent = fmt(settings.budget);
+  $("pct").textContent = Math.round(spent / (settings.budget || 1) * 100) + "%";
+  const bar = $("bar");
+  bar.style.width = pct + "%";
+  bar.className = "bar h-full rounded-full " + (pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-400");
+
+  // 近 7 天
+  const days = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d; });
+  const totals = days.map(d => entries.filter(e => dayKey(e.ts) === dayKey(d)).reduce((s,e) => s + e.amount, 0));
+  $("weekTotal").textContent = fmt(totals.reduce((a,b) => a+b, 0)) + " " + settings.currency;
+  const labels = days.map(d => d.toLocaleDateString("zh-TW", { weekday:"short" }));
+  const colors = totals.map(t => t > settings.budget ? "#fb7185" : "#34d399");
+  if (weekChart) weekChart.destroy();
+  weekChart = new Chart($("weekChart"), {
+    type: "bar",
+    data: { labels, datasets: [{ data: totals, backgroundColor: colors, borderRadius: 6 }] },
+    options: { plugins: { legend: { display:false } }, scales: { x:{ ticks:{color:"#94a3b8"}, grid:{display:false} }, y:{ ticks:{color:"#94a3b8"}, grid:{color:"#334155"} } } }
+  });
+
+  // 分類
+  const byCat = {};
+  todays.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
+  const keys = Object.keys(byCat);
+  $("catEmpty").classList.toggle("hidden", keys.length > 0);
+  if (catChart) catChart.destroy();
+  catChart = new Chart($("catChart"), {
+    type: "doughnut",
+    data: { labels: keys.map(k => CATS[k]?.label || k), datasets: [{ data: keys.map(k => byCat[k]), backgroundColor: keys.map(k => CATS[k]?.color || "#94a3b8"), borderWidth: 0 }] },
+    options: { plugins: { legend: { display:false } }, cutout: "65%" }
+  });
+  $("catLegend").innerHTML = keys.map(k =>
+    `<li class="flex justify-between"><span><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${CATS[k]?.color}"></span>${CATS[k]?.label || k}</span><span class="text-slate-300">${fmt(byCat[k])}</span></li>`).join("");
+
+  // 明細
+  $("listEmpty").classList.toggle("hidden", todays.length > 0);
+  $("list").innerHTML = todays.slice().reverse().map(e => `
+    <li class="py-2 flex items-center justify-between">
+      <div class="min-w-0">
+        <p class="truncate">${esc(e.merchant || "未命名")}</p>
+        <p class="text-xs text-slate-400">${CATS[e.category]?.label || e.category} · ${new Date(e.ts).toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"})}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-semibold">${fmt(e.amount)} <span class="text-xs text-slate-400">${e.currency}</span></span>
+        <button data-del="${e.id}" class="text-slate-500 text-lg">×</button>
+      </div>
+    </li>`).join("");
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+$("list").addEventListener("click", e => {
+  const id = e.target.dataset.del;
+  if (!id) return;
+  entries = entries.filter(x => x.id !== id);
+  save("sb_entries", entries); render();
+});
+
+// ---------- 圖片壓縮 ----------
+function compress(file, max = 1280) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const dataUrl = c.toDataURL("image/jpeg", 0.82);
+      URL.revokeObjectURL(url);
+      resolve(dataUrl);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ---------- AI 辨識 ----------
+$("file").addEventListener("change", async ev => {
+  const f = ev.target.files[0];
+  ev.target.value = "";
+  if (!f) return;
+  $("loading").classList.replace("hidden", "flex");
+  try {
+    pendingImg = await compress(f);
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: pendingImg.split(",")[1], mime: "image/jpeg", defaultCurrency: settings.currency })
+    });
+    if (!res.ok) throw new Error((await res.text()) || res.status);
+    openModal(await res.json());
+  } catch (err) {
+    console.error(err);
+    // 備案：辨識失敗也讓使用者手動補，Demo 不會卡住
+    openModal({ amount: "", currency: settings.currency, merchant: "", category: "Other", confidence: 0 }, "辨識失敗，請手動補上金額（" + (err.message || err).toString().slice(0,60) + "）");
+  } finally {
+    $("loading").classList.replace("flex", "hidden");
+  }
+});
+
+function openModal(d, warnMsg) {
+  $("fAmount").value = d.amount ?? "";
+  $("fCur").value = (d.currency || settings.currency).toUpperCase();
+  $("fMerchant").value = d.merchant || "";
+  $("fCat").value = CATS[d.category] ? d.category : "Other";
+  const c = Number(d.confidence ?? 0);
+  $("conf").textContent = c ? "信心 " + Math.round(c * 100) + "%" : "請確認";
+  $("conf").className = "text-xs px-2 py-0.5 rounded-full " + (c >= .8 ? "bg-emerald-900 text-emerald-300" : "bg-amber-900 text-amber-300");
+  if (pendingImg) { $("preview").src = pendingImg; $("preview").classList.remove("hidden"); } else $("preview").classList.add("hidden");
+  const w = warnMsg || dupWarning(Number(d.amount), d.merchant);
+  $("warn").textContent = w || ""; $("warn").classList.toggle("hidden", !w);
+  $("modal").classList.replace("hidden", "flex");
+}
+const closeModal = () => { $("modal").classList.replace("flex", "hidden"); pendingImg = null; };
+$("btnCancel").onclick = closeModal;
+$("btnManual").onclick = () => { pendingImg = null; openModal({ amount:"", currency: settings.currency, category:"Food & Beverage", confidence:0 }); };
+
+// 簡單重複偵測：30 分鐘內同金額
+function dupWarning(amount) {
+  if (!amount) return "";
+  const hit = entries.find(e => Math.abs(e.amount - amount) < 0.01 && Date.now() - e.ts < 30 * 60 * 1000);
+  return hit ? `⚠️ 30 分鐘內已有一筆相同金額（${hit.merchant || "未命名"}），可能是重複，請確認。` : "";
+}
+
+$("btnSave").onclick = () => {
+  const amount = parseFloat($("fAmount").value);
+  if (!(amount > 0)) { $("fAmount").focus(); return; }
+  entries.push({
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    ts: Date.now(), amount,
+    currency: $("fCur").value.trim().toUpperCase() || settings.currency,
+    merchant: $("fMerchant").value.trim(),
+    category: $("fCat").value
+  });
+  save("sb_entries", entries);
+  closeModal(); render();
+};
+
+// ---------- 設定 ----------
+$("btnSettings").onclick = () => {
+  const b = prompt("每日預算金額：", settings.budget);
+  if (b === null) return;
+  const c = prompt("幣別（例如 THB、TWD、USD）：", settings.currency);
+  const nb = parseFloat(b);
+  if (nb > 0) settings.budget = nb;
+  if (c && c.trim()) settings.currency = c.trim().toUpperCase();
+  save("sb_settings", settings); render();
+};
+
+render();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
