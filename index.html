@@ -3,316 +3,727 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#eef3f1">
 <link rel="manifest" href="manifest.json">
 <title>SnapBudget</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-  body { background:#0f172a; color:#e2e8f0; -webkit-tap-highlight-color:transparent; }
-  .card { background:#1e293b; border-radius:1.25rem; }
-  .bar { transition: width .8s cubic-bezier(.2,.8,.2,1), background-color .4s; }
-  .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+:root{--bg:#eef3f1;--card:#fff;--ink:#16302b;--mute:#5d746e;--line:#d3e0db;--accent:#0f766e;--accent-ink:#fff;--hi:#f4c542;--err:#b4301f;--ok:#15803d;--warn:#b45309}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){--bg:#0e1b18;--card:#162824;--ink:#e6f1ee;--mute:#92aaa4;--line:#27403a;--accent:#3fc1b2;--accent-ink:#06201c;--err:#ff8b78;--ok:#4ade80;--warn:#fbbf24}}
+[data-theme=light]{--bg:#eef3f1;--card:#fff;--ink:#16302b;--mute:#5d746e;--line:#d3e0db;--accent:#0f766e;--accent-ink:#fff;--err:#b4301f;--ok:#15803d;--warn:#b45309}
+[data-theme=dark]{--bg:#0e1b18;--card:#162824;--ink:#e6f1ee;--mute:#92aaa4;--line:#27403a;--accent:#3fc1b2;--accent-ink:#06201c;--err:#ff8b78;--ok:#4ade80;--warn:#fbbf24}
+[data-theme=cream]{--bg:#fbf3dc;--card:#fffaf0;--ink:#3a2a10;--mute:#7a6540;--line:#eadcb4;--accent:#8a5a00;--accent-ink:#fff;--err:#b4301f;--ok:#15803d;--warn:#b45309}
+[data-theme=olive]{--bg:#eaeddb;--card:#f6f7ec;--ink:#2c3319;--mute:#646b4a;--line:#d3d8b8;--accent:#55672a;--accent-ink:#fff;--err:#b4301f;--ok:#15803d;--warn:#b45309}
+[data-theme=rose]{--bg:#f7e9ea;--card:#fff6f6;--ink:#3a1a22;--mute:#86565f;--line:#ecd0d3;--accent:#a8475a;--accent-ink:#fff;--err:#b4301f;--ok:#15803d;--warn:#b45309}
+[data-theme=plum]{--bg:#17101f;--card:#211830;--ink:#efe6f7;--mute:#b0a0c2;--line:#35264a;--accent:#c9a3e6;--accent-ink:#1a0f26;--err:#ff8b78;--ok:#4ade80;--warn:#fbbf24}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Thai","Noto Sans TC",sans-serif;padding-bottom:110px}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:460px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;padding-top:6px}
+h1{font-size:20px;margin:0}
+.sub{font-size:12px;color:var(--mute);margin:2px 0 0}
+.icons{display:flex;gap:8px}
+.ibtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer}
+.ibtn svg{width:19px;height:19px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs{display:flex;gap:6px;margin:14px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px}
+.tabs button{flex:1;border:0;background:none;padding:9px;border-radius:10px;cursor:pointer;color:var(--mute);font-weight:600}
+.tabs button.on{background:var(--accent);color:var(--accent-ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px}
+.lbl{font-size:12px;color:var(--mute);margin:0}
+.big{font-size:32px;font-weight:700;margin:2px 0}
+.mid{font-size:20px;font-weight:700;margin:2px 0}
+.flex{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.right{text-align:right}
+.bar{height:12px;background:color-mix(in srgb,var(--ink) 10%,var(--card));border-radius:99px;overflow:hidden;margin-top:10px}
+.bar>div{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.2,1),background-color .3s;background:var(--ok)}
+.bar>div.warn{background:var(--warn)}.bar>div.bad{background:var(--err)}
+.ok{color:var(--ok)}.bad{color:var(--err)}.warnc{color:var(--warn)}
+ul{list-style:none;margin:0;padding:0}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.rmain{flex:1;min-width:0}
+.rt{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs{margin:0;font-size:12px;color:var(--mute)}
+.amt{font-weight:700;white-space:nowrap}.amt.in{color:var(--ok)}
+.empty{color:var(--mute);font-size:14px;margin:6px 0 0}
+.alert{font-size:13px;padding:8px 10px;border-radius:10px;margin-bottom:8px;background:color-mix(in srgb,var(--warn) 14%,var(--card));color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,var(--card))}
+.alert.bad{background:color-mix(in srgb,var(--err) 14%,var(--card));color:var(--err);border-color:color-mix(in srgb,var(--err) 40%,var(--card))}
+.mnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mnav b{font-size:16px}
+.mnav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:18px}
+.mnav button:disabled{opacity:.35;cursor:default}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.legend li{display:flex;justify-content:space-between;font-size:13px;padding:2px 0}
+.legend .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+.chartbox{position:relative;height:170px}
+.donut{display:flex;align-items:center;gap:14px}.donut .chartbox{width:130px;height:130px;flex:none}.donut .legend{flex:1}
+.brow{margin-bottom:12px}.brow:last-child{margin-bottom:0}
+.brow .top{display:flex;justify-content:space-between;font-size:13px}
+.btn{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.btn.sec{background:color-mix(in srgb,var(--ink) 9%,var(--card));color:var(--ink);font-weight:600}
+.btn.dng{background:color-mix(in srgb,var(--err) 14%,var(--card));color:var(--err)}
+.btn:disabled{opacity:.5}
+.btn.full{width:100%}
+.tips{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
+.bottom{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.bottom .in{max-width:460px;margin:0 auto;display:flex;gap:10px}
+.bottom label{flex:1;text-align:center;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:15px;border-radius:16px;cursor:pointer}
+.bottom label input{display:none}
+.bottom button{padding:0 22px;border-radius:16px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:600}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:40}
+.ov.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:460px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet h3{margin:0 0 12px;font-size:17px}
+.sheet .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sheet .hd h3{margin:0}
+.fld{margin-bottom:10px}
+.fld label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+.fld input,.fld select{width:100%;padding:11px;border-radius:12px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 5%,var(--card));outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--accent)}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:none;cursor:pointer;font-weight:600;color:var(--mute)}
+.seg button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.acts{display:flex;gap:8px;margin-top:6px}.acts .btn{flex:1}
+.warnbox{font-size:12px;color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--card));border-radius:10px;padding:8px;margin:0 0 10px}
+.chip{font-size:12px;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--ink) 10%,var(--card));color:var(--mute)}
+.chip.good{background:color-mix(in srgb,var(--ok) 18%,var(--card));color:var(--ok)}
+.chip.mid{background:color-mix(in srgb,var(--warn) 18%,var(--card));color:var(--warn)}
+#preview{display:none;width:100%;max-height:150px;object-fit:contain;border-radius:10px;background:color-mix(in srgb,var(--ink) 8%,var(--card));margin-bottom:10px}
+.themes{display:flex;flex-wrap:wrap;gap:8px}
+.themes button{display:flex;align-items:center;gap:6px;padding:6px 10px 6px 6px;border-radius:99px;border:2px solid var(--line);background:none;cursor:pointer;font-size:13px}
+.themes button.on{border-color:var(--accent)}
+.themes i{width:20px;height:20px;border-radius:50%;border:1px solid rgba(0,0,0,.2);display:block}
+.sec-t{font-size:13px;font-weight:700;margin:16px 0 8px;color:var(--mute);text-transform:uppercase;letter-spacing:.03em}
+.cb{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center;margin-bottom:6px;font-size:14px}
+.cb input{padding:8px;border-radius:10px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 5%,var(--card));width:100%}
+.hint{font-size:12px;color:var(--mute);margin:4px 0 8px}
+.msg{font-size:13px;margin:8px 0;min-height:18px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;font-size:13px;z-index:70;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+#loading{z-index:60;align-items:center}
+.spin{width:40px;height:40px;border:4px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:sp 1s linear infinite;margin:0 auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+[hidden]{display:none!important}
 </style>
 </head>
-<body class="min-h-screen pb-32">
-<div class="max-w-md mx-auto p-4 space-y-4">
-
-  <header class="flex items-center justify-between pt-2">
+<body>
+<div class="wrap">
+  <header>
     <div>
-      <h1 class="text-xl font-bold">SnapBudget</h1>
-      <p id="today" class="text-xs text-slate-400"></p>
+      <h1>SnapBudget</h1>
+      <p id="today" class="sub"></p>
     </div>
-    <button id="btnSettings" class="text-sm text-slate-300 bg-slate-800 px-3 py-1.5 rounded-full">⚙️ 預算</button>
+    <div class="icons">
+      <button class="ibtn" id="btnAccount" aria-label="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></button>
+      <button class="ibtn" id="btnSettings" aria-label="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
   </header>
 
-  <!-- 每日預算 -->
-  <section class="card p-5">
-    <div class="flex items-end justify-between">
-      <div>
-        <p class="text-xs text-slate-400">今日已花</p>
-        <p class="text-3xl font-bold"><span id="spent">0</span> <span id="cur" class="text-base text-slate-400">THB</span></p>
+  <nav class="tabs">
+    <button id="tabToday" class="on" data-tab="today" data-i18n="tab_today"></button>
+    <button id="tabMonth" data-tab="month" data-i18n="tab_month"></button>
+  </nav>
+
+  <!-- TODAY -->
+  <main id="vToday">
+    <section class="card">
+      <p class="lbl" data-i18n="wallet"></p>
+      <p class="big"><span id="wallet">0</span> <span class="lbl" id="cur">THB</span></p>
+      <div class="three" style="margin-top:8px">
+        <div style="text-align:left"><p class="lbl" data-i18n="out_today"></p><p class="mid" id="outToday">0</p></div>
+        <div></div>
+        <div class="right"><p class="lbl" data-i18n="in_today"></p><p class="mid ok" id="inToday">0</p></div>
       </div>
-      <div class="text-right">
-        <p class="text-xs text-slate-400">剩餘</p>
-        <p id="left" class="text-xl font-semibold text-emerald-400">0</p>
+    </section>
+    <section class="card">
+      <div class="flex">
+        <div><p class="lbl" data-i18n="daily_budget"></p><p class="mid"><span id="spentB">0</span> / <span id="budgetB">0</span></p></div>
+        <div class="right"><p class="lbl" data-i18n="left"></p><p class="mid" id="leftB">0</p></div>
       </div>
-    </div>
-    <div class="mt-4 h-4 bg-slate-700 rounded-full overflow-hidden">
-      <div id="bar" class="bar h-full bg-emerald-400 rounded-full" style="width:0%"></div>
-    </div>
-    <div class="mt-2 flex justify-between text-xs text-slate-400">
-      <span id="pct">0%</span><span>每日預算 <span id="budget">0</span></span>
-    </div>
-  </section>
+      <div class="bar"><div id="dbar" style="width:0%"></div></div>
+    </section>
+    <div id="alerts"></div>
+    <section class="card">
+      <h2 data-i18n="list_today"></h2>
+      <ul id="list"></ul>
+      <p id="listEmpty" class="empty" data-i18n="no_records"></p>
+    </section>
+  </main>
 
-  <!-- 本週 -->
-  <section class="card p-5">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="font-semibold">本週累積</h2>
-      <p class="text-sm text-slate-400">共 <span id="weekTotal" class="text-slate-100 font-semibold">0</span></p>
+  <!-- MONTH -->
+  <main id="vMonth" hidden>
+    <div class="mnav">
+      <button id="mPrev" aria-label="prev">&lsaquo;</button>
+      <b id="monthLabel"></b>
+      <button id="mNext" aria-label="next">&rsaquo;</button>
     </div>
-    <canvas id="weekChart" height="120"></canvas>
-  </section>
-
-  <!-- 分類 -->
-  <section class="card p-5">
-    <h2 class="font-semibold mb-2">今日分類</h2>
-    <div class="flex items-center gap-4">
-      <div class="w-32"><canvas id="catChart"></canvas></div>
-      <ul id="catLegend" class="text-sm space-y-1 flex-1"></ul>
-    </div>
-    <p id="catEmpty" class="text-sm text-slate-500 hidden">還沒有記錄，拍一張試試</p>
-  </section>
-
-  <!-- 今日明細 -->
-  <section class="card p-5">
-    <h2 class="font-semibold mb-2">今日明細</h2>
-    <ul id="list" class="divide-y divide-slate-700"></ul>
-    <p id="listEmpty" class="text-sm text-slate-500">尚無記錄</p>
-  </section>
+    <section class="card">
+      <div class="three">
+        <div><p class="lbl" data-i18n="m_income"></p><p class="mid ok" id="mIn">0</p></div>
+        <div><p class="lbl" data-i18n="m_expense"></p><p class="mid" id="mOut">0</p></div>
+        <div><p class="lbl" data-i18n="m_net"></p><p class="mid" id="mNet">0</p></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2 data-i18n="by_cat"></h2>
+      <div class="donut">
+        <div class="chartbox"><canvas id="catChart"></canvas></div>
+        <ul id="catLegend" class="legend"></ul>
+      </div>
+      <p id="catEmpty" class="empty" data-i18n="no_records"></p>
+    </section>
+    <section class="card">
+      <h2 data-i18n="daily"></h2>
+      <div class="chartbox"><canvas id="dayChart"></canvas></div>
+    </section>
+    <section class="card">
+      <h2 data-i18n="budgets"></h2>
+      <div id="budgetList"></div>
+      <p id="budgetEmpty" class="empty" data-i18n="budgets_empty"></p>
+    </section>
+    <section class="card">
+      <h2 data-i18n="ai_title"></h2>
+      <button class="btn sec full" id="btnAi" data-i18n="ai_btn"></button>
+      <p id="tips" class="tips"></p>
+    </section>
+    <section class="card">
+      <div class="flex" style="align-items:center;margin-bottom:6px">
+        <h2 style="margin:0" data-i18n="records"></h2>
+        <button class="btn sec" id="btnCsv" data-i18n="export"></button>
+      </div>
+      <ul id="mList"></ul>
+      <p id="mEmpty" class="empty" data-i18n="no_records"></p>
+    </section>
+  </main>
 </div>
 
-<!-- 底部按鈕 -->
-<div class="fixed bottom-0 inset-x-0 p-4 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
-  <div class="max-w-md mx-auto flex gap-3">
-    <label class="flex-1 text-center bg-emerald-500 active:bg-emerald-600 text-slate-900 font-bold py-4 rounded-2xl cursor-pointer">
-      📷 隨手記
-      <input id="file" type="file" accept="image/*" class="hidden">
-    </label>
-    <button id="btnManual" class="bg-slate-700 px-5 rounded-2xl text-sm">✍️ 手動</button>
+<div class="bottom"><div class="in">
+  <label><span data-i18n="scan"></span><input id="file" type="file" accept="image/*"></label>
+  <button id="btnManual" data-i18n="manual"></button>
+</div></div>
+
+<!-- loading -->
+<div id="loading" class="ov"><div style="text-align:center;color:#fff"><div class="spin"></div><p style="margin-top:12px" data-i18n="scanning"></p></div></div>
+
+<!-- entry modal -->
+<div id="modal" class="ov"><div class="sheet">
+  <div class="hd"><h3 id="mTitle"></h3><span id="conf" class="chip"></span></div>
+  <div class="seg"><button id="segExp" data-i18n="expense"></button><button id="segInc" data-i18n="income"></button></div>
+  <img id="preview" alt="">
+  <p id="warn" class="warnbox" hidden></p>
+  <div class="fld"><label data-i18n="amount"></label><input id="fAmount" type="number" step="0.01" inputmode="decimal"></div>
+  <div class="fld"><label data-i18n="merchant"></label><input id="fMerchant" maxlength="80"></div>
+  <div class="fld"><label data-i18n="category"></label><select id="fCat"></select></div>
+  <div class="fld"><label data-i18n="date"></label><input id="fDate" type="date"></div>
+  <div class="acts">
+    <button class="btn dng" id="btnDelete" data-i18n="delete" hidden></button>
+    <button class="btn sec" id="btnCancel" data-i18n="cancel"></button>
+    <button class="btn" id="btnSave" data-i18n="save"></button>
   </div>
-</div>
+</div></div>
 
-<!-- Loading -->
-<div id="loading" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center z-50">
-  <div class="text-center">
-    <div class="spin w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full mx-auto"></div>
-    <p class="mt-3 text-sm">AI 辨識中…</p>
-  </div>
-</div>
+<!-- settings -->
+<div id="sheetSet" class="ov"><div class="sheet">
+  <div class="hd"><h3 data-i18n="settings"></h3><button class="btn sec" data-close="sheetSet" data-i18n="close"></button></div>
+  <div class="fld"><label data-i18n="language"></label><select id="selLang"></select></div>
+  <p class="sec-t" data-i18n="theme"></p>
+  <div class="themes" id="themes"></div>
+  <p class="sec-t" data-i18n="wallet"></p>
+  <div class="fld"><label data-i18n="start_cash"></label><input id="sCash" type="number" step="0.01" inputmode="decimal"></div>
+  <div class="fld"><label data-i18n="daily_budget"></label><input id="sBudget" type="number" step="1" inputmode="decimal"></div>
+  <p class="sec-t" data-i18n="month_budgets"></p>
+  <p class="hint" data-i18n="month_budgets_hint"></p>
+  <div id="catBudgets"></div>
+</div></div>
 
-<!-- 確認視窗 -->
-<div id="modal" class="fixed inset-0 bg-black/60 hidden items-end z-40">
-  <div class="card w-full max-w-md mx-auto rounded-b-none p-5 space-y-3">
-    <div class="flex justify-between items-center">
-      <h3 class="font-bold">確認這筆消費</h3>
-      <span id="conf" class="text-xs px-2 py-0.5 rounded-full bg-slate-700"></span>
-    </div>
-    <img id="preview" class="hidden w-full max-h-40 object-contain rounded-lg bg-slate-900">
-    <p id="warn" class="hidden text-xs text-amber-300 bg-amber-900/30 rounded-lg p-2"></p>
-    <div class="grid grid-cols-3 gap-2">
-      <div class="col-span-2">
-        <label class="text-xs text-slate-400">金額</label>
-        <input id="fAmount" type="number" step="0.01" inputmode="decimal" class="w-full bg-slate-900 rounded-lg p-2">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">幣別</label>
-        <input id="fCur" class="w-full bg-slate-900 rounded-lg p-2 uppercase">
-      </div>
-    </div>
-    <div>
-      <label class="text-xs text-slate-400">商家 / 項目</label>
-      <input id="fMerchant" class="w-full bg-slate-900 rounded-lg p-2">
-    </div>
-    <div>
-      <label class="text-xs text-slate-400">分類</label>
-      <select id="fCat" class="w-full bg-slate-900 rounded-lg p-2"></select>
-    </div>
-    <div class="flex gap-3 pt-1">
-      <button id="btnCancel" class="flex-1 bg-slate-700 py-3 rounded-xl">取消</button>
-      <button id="btnSave" class="flex-1 bg-emerald-500 text-slate-900 font-bold py-3 rounded-xl">✅ 確認入帳</button>
-    </div>
+<!-- account -->
+<div id="sheetAuth" class="ov"><div class="sheet">
+  <div class="hd"><h3 data-i18n="account"></h3><button class="btn sec" data-close="sheetAuth" data-i18n="close"></button></div>
+  <div id="authOff" hidden><p class="hint" data-i18n="auth_off"></p></div>
+  <div id="authOut" hidden>
+    <div class="fld"><label data-i18n="email"></label><input id="aEmail" type="email" autocomplete="email"></div>
+    <div class="fld"><label data-i18n="password"></label><input id="aPass" type="password" autocomplete="current-password"></div>
+    <div class="acts"><button class="btn" id="btnLogin" data-i18n="login"></button><button class="btn sec" id="btnSignup" data-i18n="signup"></button></div>
+    <div class="acts" id="googleRow" hidden><button class="btn sec" id="btnGoogle" data-i18n="google"></button></div>
   </div>
-</div>
+  <div id="authIn" hidden>
+    <p id="whoami"></p>
+    <div class="acts"><button class="btn sec" id="btnSync" data-i18n="sync_now"></button><button class="btn dng" id="btnLogout" data-i18n="logout"></button></div>
+  </div>
+  <p id="authMsg" class="msg"></p>
+</div></div>
+
+<div id="toast" class="toast"></div>
 
 <script>
-const CATS = {
-  "Food & Beverage": { label:"餐飲", color:"#f59e0b" },
-  "Transport":       { label:"交通", color:"#38bdf8" },
-  "Shopping":        { label:"購物", color:"#a78bfa" },
-  "Groceries":       { label:"超市雜貨", color:"#34d399" },
-  "Entertainment":   { label:"娛樂", color:"#f472b6" },
-  "Bills":           { label:"帳單", color:"#fb7185" },
-  "Health":          { label:"醫療", color:"#2dd4bf" },
-  "Other":           { label:"其他", color:"#94a3b8" },
+// ===== CONFIG =====
+const SUPABASE_URL = "https://iefrfqgvuperizvrxpsi.supabase.co";
+const SUPABASE_KEY = "PASTE_PUBLISHABLE_KEY_HERE"; // Supabase > Project Settings > API Keys > Publishable key (safe for the browser)
+const ENABLE_GOOGLE = false;                         // set true only after Google login is set up in Supabase
+
+// ===== TRANSLATIONS (every language must have exactly the same keys) =====
+const T = {
+en:{tab_today:"Today",tab_month:"Month",wallet:"Cash in wallet",out_today:"Spent today",in_today:"Received today",daily_budget:"Daily budget",left:"Left",list_today:"Today's records",no_records:"No records yet",scan:"Snap",manual:"Manual",scanning:"Reading receipt...",add_title:"Add record",edit_title:"Edit record",expense:"Expense",income:"Income",amount:"Amount",merchant:"Shop / note",category:"Category",date:"Date",cancel:"Cancel",save:"Save",delete:"Delete",confirm_delete:"Delete this record?",conf:"Confidence {p}%",check:"Please check",scan_fail:"Could not read it. Please fill in the amount ({e})",dup_warn:"A record with the same amount ({m}) was added in the last 30 minutes. It may be a duplicate.",cur_warn:"The receipt looks like {c}, not {d}. Please check the amount.",m_income:"Income",m_expense:"Expenses",m_net:"Net",by_cat:"Spending by category",daily:"Daily",budgets:"Category budgets",budgets_empty:"No budgets yet. Set them in Settings.",records:"Records",export:"Export CSV",ai_title:"AI tips",ai_btn:"Get tips for this month",ai_loading:"Thinking...",ai_fail:"AI is busy. Try again soon.",budget_alert:"{c}: {p}% of budget used",budget_hit:"{c} is at {p}% of this month's budget",settings:"Settings",language:"Language",theme:"Theme",th_auto:"Auto",th_light:"Light",th_dark:"Dark",th_cream:"Cream",th_olive:"Olive",th_rose:"Rose",th_plum:"Plum",start_cash:"Starting cash in wallet",month_budgets:"Monthly budget per category",month_budgets_hint:"Leave empty for no limit. Bars turn amber at 80% and red at 100%.",close:"Close",account:"Account",login:"Log in",signup:"Sign up",logout:"Log out",email:"Email",password:"Password (6+ characters)",signed_as:"Signed in as {e}",sync_now:"Sync now",s_syncing:"Syncing...",s_ok:"Synced",s_fail:"Sync failed: {e}",verify_email:"Almost done. Check your email and tap the verification link, then log in.",auth_off:"Login is not set up yet. Your data is saved on this device.",auth_short:"Enter an email and a password of at least 6 characters.",google:"Continue with Google",untitled:"Untitled",c_food:"Food & drink",c_transport:"Transport",c_shopping:"Shopping",c_groceries:"Groceries",c_fun:"Entertainment",c_bills:"Bills",c_health:"Health",c_other:"Other",i_salary:"Salary",i_allowance:"Allowance",i_gift:"Gift",i_other:"Other income"},
+zh:{tab_today:"今日",tab_month:"本月",wallet:"錢包現金",out_today:"今日支出",in_today:"今日收入",daily_budget:"每日預算",left:"剩餘",list_today:"今日明細",no_records:"尚無記錄",scan:"隨手記",manual:"手動",scanning:"AI 辨識中...",add_title:"新增記錄",edit_title:"編輯記錄",expense:"支出",income:"收入",amount:"金額",merchant:"商家 / 備註",category:"分類",date:"日期",cancel:"取消",save:"儲存",delete:"刪除",confirm_delete:"要刪除這筆記錄嗎？",conf:"信心 {p}%",check:"請確認",scan_fail:"辨識失敗，請手動補上金額（{e}）",dup_warn:"30 分鐘內已有一筆相同金額（{m}），可能重複，請確認。",cur_warn:"收據看起來是 {c}，不是 {d}，請確認金額。",m_income:"收入",m_expense:"支出",m_net:"結餘",by_cat:"支出分類",daily:"每日",budgets:"分類預算",budgets_empty:"還沒有設定預算，請到設定裡新增。",records:"記錄",export:"匯出 CSV",ai_title:"AI 建議",ai_btn:"取得本月建議",ai_loading:"思考中...",ai_fail:"AI 現在比較忙，請稍後再試。",budget_alert:"{c}：預算已用 {p}%",budget_hit:"{c} 已達本月預算的 {p}%",settings:"設定",language:"語言",theme:"主題",th_auto:"自動",th_light:"淺色",th_dark:"深色",th_cream:"奶油",th_olive:"橄欖",th_rose:"玫瑰",th_plum:"紫李",start_cash:"錢包起始現金",month_budgets:"每月分類預算",month_budgets_hint:"留空代表不設上限。用到 80% 變黃色，100% 變紅色。",close:"關閉",account:"帳號",login:"登入",signup:"註冊",logout:"登出",email:"電子郵件",password:"密碼（至少 6 個字元）",signed_as:"已登入：{e}",sync_now:"立即同步",s_syncing:"同步中...",s_ok:"已同步",s_fail:"同步失敗：{e}",verify_email:"快完成了。請到信箱點驗證連結，然後再登入。",auth_off:"登入功能尚未設定，資料目前只存在這台裝置。",auth_short:"請輸入電子郵件和至少 6 個字元的密碼。",google:"使用 Google 繼續",untitled:"未命名",c_food:"餐飲",c_transport:"交通",c_shopping:"購物",c_groceries:"超市雜貨",c_fun:"娛樂",c_bills:"帳單",c_health:"醫療",c_other:"其他",i_salary:"薪水",i_allowance:"零用錢",i_gift:"禮金",i_other:"其他收入"},
+cn:{tab_today:"今日",tab_month:"本月",wallet:"钱包现金",out_today:"今日支出",in_today:"今日收入",daily_budget:"每日预算",left:"剩余",list_today:"今日明细",no_records:"暂无记录",scan:"随手记",manual:"手动",scanning:"AI 识别中...",add_title:"新增记录",edit_title:"编辑记录",expense:"支出",income:"收入",amount:"金额",merchant:"商家 / 备注",category:"分类",date:"日期",cancel:"取消",save:"保存",delete:"删除",confirm_delete:"要删除这条记录吗？",conf:"置信度 {p}%",check:"请确认",scan_fail:"识别失败，请手动补上金额（{e}）",dup_warn:"30 分钟内已有一笔相同金额（{m}），可能重复，请确认。",cur_warn:"收据看起来是 {c}，不是 {d}，请确认金额。",m_income:"收入",m_expense:"支出",m_net:"结余",by_cat:"支出分类",daily:"每日",budgets:"分类预算",budgets_empty:"还没有设置预算，请到设置里添加。",records:"记录",export:"导出 CSV",ai_title:"AI 建议",ai_btn:"获取本月建议",ai_loading:"思考中...",ai_fail:"AI 现在比较忙，请稍后再试。",budget_alert:"{c}：预算已用 {p}%",budget_hit:"{c} 已达本月预算的 {p}%",settings:"设置",language:"语言",theme:"主题",th_auto:"自动",th_light:"浅色",th_dark:"深色",th_cream:"奶油",th_olive:"橄榄",th_rose:"玫瑰",th_plum:"紫李",start_cash:"钱包起始现金",month_budgets:"每月分类预算",month_budgets_hint:"留空代表不设上限。用到 80% 变黄色，100% 变红色。",close:"关闭",account:"账号",login:"登录",signup:"注册",logout:"退出登录",email:"电子邮件",password:"密码（至少 6 个字符）",signed_as:"已登录：{e}",sync_now:"立即同步",s_syncing:"同步中...",s_ok:"已同步",s_fail:"同步失败：{e}",verify_email:"快完成了。请到邮箱点击验证链接，然后再登录。",auth_off:"登录功能尚未设置，数据目前只保存在这台设备上。",auth_short:"请输入电子邮件和至少 6 个字符的密码。",google:"使用 Google 继续",untitled:"未命名",c_food:"餐饮",c_transport:"交通",c_shopping:"购物",c_groceries:"超市杂货",c_fun:"娱乐",c_bills:"账单",c_health:"医疗",c_other:"其他",i_salary:"工资",i_allowance:"零花钱",i_gift:"礼金",i_other:"其他收入"},
+th:{tab_today:"วันนี้",tab_month:"เดือนนี้",wallet:"เงินสดในกระเป๋า",out_today:"จ่ายวันนี้",in_today:"รับวันนี้",daily_budget:"งบรายวัน",left:"คงเหลือ",list_today:"รายการวันนี้",no_records:"ยังไม่มีรายการ",scan:"ถ่ายบันทึก",manual:"กรอกเอง",scanning:"กำลังอ่านใบเสร็จ...",add_title:"เพิ่มรายการ",edit_title:"แก้ไขรายการ",expense:"รายจ่าย",income:"รายรับ",amount:"จำนวนเงิน",merchant:"ร้านค้า / บันทึก",category:"หมวดหมู่",date:"วันที่",cancel:"ยกเลิก",save:"บันทึก",delete:"ลบ",confirm_delete:"ลบรายการนี้ใช่ไหม?",conf:"ความมั่นใจ {p}%",check:"โปรดตรวจสอบ",scan_fail:"อ่านไม่ได้ กรุณากรอกจำนวนเงิน ({e})",dup_warn:"มีรายการจำนวนเงินเท่ากัน ({m}) ใน 30 นาทีที่ผ่านมา อาจซ้ำ",cur_warn:"ใบเสร็จดูเหมือนเป็น {c} ไม่ใช่ {d} โปรดตรวจสอบจำนวนเงิน",m_income:"รายรับ",m_expense:"รายจ่าย",m_net:"คงเหลือสุทธิ",by_cat:"รายจ่ายตามหมวด",daily:"รายวัน",budgets:"งบตามหมวด",budgets_empty:"ยังไม่ได้ตั้งงบ ไปตั้งได้ที่การตั้งค่า",records:"รายการ",export:"ส่งออก CSV",ai_title:"คำแนะนำจาก AI",ai_btn:"ขอคำแนะนำเดือนนี้",ai_loading:"กำลังคิด...",ai_fail:"AI ไม่ว่างในตอนนี้ ลองใหม่อีกครั้ง",budget_alert:"{c}: ใช้งบไปแล้ว {p}%",budget_hit:"{c} ถึง {p}% ของงบเดือนนี้แล้ว",settings:"การตั้งค่า",language:"ภาษา",theme:"ธีม",th_auto:"อัตโนมัติ",th_light:"สว่าง",th_dark:"มืด",th_cream:"ครีม",th_olive:"มะกอก",th_rose:"กุหลาบ",th_plum:"ม่วงพลัม",start_cash:"เงินสดเริ่มต้นในกระเป๋า",month_budgets:"งบรายเดือนตามหมวด",month_budgets_hint:"เว้นว่างถ้าไม่จำกัด แถบจะเป็นสีเหลืองที่ 80% และสีแดงที่ 100%",close:"ปิด",account:"บัญชี",login:"เข้าสู่ระบบ",signup:"สมัครสมาชิก",logout:"ออกจากระบบ",email:"อีเมล",password:"รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)",signed_as:"เข้าสู่ระบบเป็น {e}",sync_now:"ซิงค์ตอนนี้",s_syncing:"กำลังซิงค์...",s_ok:"ซิงค์แล้ว",s_fail:"ซิงค์ไม่สำเร็จ: {e}",verify_email:"เกือบเสร็จแล้ว ตรวจอีเมลแล้วกดลิงก์ยืนยัน จากนั้นเข้าสู่ระบบ",auth_off:"ยังไม่ได้ตั้งค่าการเข้าสู่ระบบ ข้อมูลเก็บไว้ในเครื่องนี้",auth_short:"กรอกอีเมลและรหัสผ่านอย่างน้อย 6 ตัวอักษร",google:"ดำเนินการต่อด้วย Google",untitled:"ไม่มีชื่อ",c_food:"อาหารและเครื่องดื่ม",c_transport:"เดินทาง",c_shopping:"ช้อปปิ้ง",c_groceries:"ของใช้ในบ้าน",c_fun:"บันเทิง",c_bills:"ค่าบริการ",c_health:"สุขภาพ",c_other:"อื่น ๆ",i_salary:"เงินเดือน",i_allowance:"เงินค่าขนม",i_gift:"ของขวัญ",i_other:"รายรับอื่น ๆ"},
+es:{tab_today:"Hoy",tab_month:"Mes",wallet:"Efectivo en la cartera",out_today:"Gastado hoy",in_today:"Recibido hoy",daily_budget:"Presupuesto diario",left:"Queda",list_today:"Movimientos de hoy",no_records:"Aún no hay movimientos",scan:"Foto",manual:"Manual",scanning:"Leyendo el recibo...",add_title:"Añadir movimiento",edit_title:"Editar movimiento",expense:"Gasto",income:"Ingreso",amount:"Importe",merchant:"Tienda / nota",category:"Categoría",date:"Fecha",cancel:"Cancelar",save:"Guardar",delete:"Eliminar",confirm_delete:"¿Eliminar este movimiento?",conf:"Confianza {p}%",check:"Revisa",scan_fail:"No se pudo leer. Escribe el importe ({e})",dup_warn:"Hay un movimiento con el mismo importe ({m}) en los últimos 30 minutos. Puede estar duplicado.",cur_warn:"El recibo parece estar en {c}, no en {d}. Revisa el importe.",m_income:"Ingresos",m_expense:"Gastos",m_net:"Neto",by_cat:"Gastos por categoría",daily:"Por día",budgets:"Presupuestos por categoría",budgets_empty:"Aún no hay presupuestos. Defínelos en Ajustes.",records:"Movimientos",export:"Exportar CSV",ai_title:"Consejos de IA",ai_btn:"Ver consejos del mes",ai_loading:"Pensando...",ai_fail:"La IA está ocupada. Inténtalo de nuevo en un momento.",budget_alert:"{c}: {p}% del presupuesto usado",budget_hit:"{c} está al {p}% del presupuesto de este mes",settings:"Ajustes",language:"Idioma",theme:"Tema",th_auto:"Auto",th_light:"Claro",th_dark:"Oscuro",th_cream:"Crema",th_olive:"Oliva",th_rose:"Rosa",th_plum:"Ciruela",start_cash:"Efectivo inicial en la cartera",month_budgets:"Presupuesto mensual por categoría",month_budgets_hint:"Déjalo vacío para no poner límite. La barra se vuelve ámbar al 80 % y roja al 100 %.",close:"Cerrar",account:"Cuenta",login:"Iniciar sesión",signup:"Registrarse",logout:"Cerrar sesión",email:"Correo electrónico",password:"Contraseña (mín. 6 caracteres)",signed_as:"Sesión iniciada como {e}",sync_now:"Sincronizar ahora",s_syncing:"Sincronizando...",s_ok:"Sincronizado",s_fail:"Error al sincronizar: {e}",verify_email:"Casi listo. Revisa tu correo, pulsa el enlace de verificación y luego inicia sesión.",auth_off:"El inicio de sesión aún no está configurado. Tus datos se guardan en este dispositivo.",auth_short:"Escribe un correo y una contraseña de al menos 6 caracteres.",google:"Continuar con Google",untitled:"Sin título",c_food:"Comida y bebida",c_transport:"Transporte",c_shopping:"Compras",c_groceries:"Supermercado",c_fun:"Ocio",c_bills:"Facturas",c_health:"Salud",c_other:"Otros",i_salary:"Sueldo",i_allowance:"Paga",i_gift:"Regalo",i_other:"Otros ingresos"},
+fr:{tab_today:"Aujourd'hui",tab_month:"Mois",wallet:"Espèces dans le portefeuille",out_today:"Dépensé aujourd'hui",in_today:"Reçu aujourd'hui",daily_budget:"Budget du jour",left:"Reste",list_today:"Opérations du jour",no_records:"Aucune opération",scan:"Photo",manual:"Manuel",scanning:"Lecture du ticket...",add_title:"Ajouter une opération",edit_title:"Modifier l'opération",expense:"Dépense",income:"Revenu",amount:"Montant",merchant:"Commerce / note",category:"Catégorie",date:"Date",cancel:"Annuler",save:"Enregistrer",delete:"Supprimer",confirm_delete:"Supprimer cette opération ?",conf:"Confiance {p} %",check:"À vérifier",scan_fail:"Lecture impossible. Saisissez le montant ({e})",dup_warn:"Une opération du même montant ({m}) a été ajoutée il y a moins de 30 minutes. C'est peut-être un doublon.",cur_warn:"Le ticket semble être en {c}, pas en {d}. Vérifiez le montant.",m_income:"Revenus",m_expense:"Dépenses",m_net:"Solde",by_cat:"Dépenses par catégorie",daily:"Par jour",budgets:"Budgets par catégorie",budgets_empty:"Aucun budget. Définissez-les dans les réglages.",records:"Opérations",export:"Exporter en CSV",ai_title:"Conseils IA",ai_btn:"Conseils pour ce mois",ai_loading:"Réflexion...",ai_fail:"L'IA est occupée. Réessayez dans un instant.",budget_alert:"{c} : {p} % du budget utilisé",budget_hit:"{c} est à {p} % du budget du mois",settings:"Réglages",language:"Langue",theme:"Thème",th_auto:"Auto",th_light:"Clair",th_dark:"Sombre",th_cream:"Crème",th_olive:"Olive",th_rose:"Rose",th_plum:"Prune",start_cash:"Espèces au départ",month_budgets:"Budget mensuel par catégorie",month_budgets_hint:"Laissez vide pour ne pas limiter. La barre devient orange à 80 % et rouge à 100 %.",close:"Fermer",account:"Compte",login:"Se connecter",signup:"Créer un compte",logout:"Se déconnecter",email:"E-mail",password:"Mot de passe (6 caractères min.)",signed_as:"Connecté en tant que {e}",sync_now:"Synchroniser",s_syncing:"Synchronisation...",s_ok:"Synchronisé",s_fail:"Échec de la synchronisation : {e}",verify_email:"Presque fini. Ouvrez l'e-mail, touchez le lien de vérification, puis connectez-vous.",auth_off:"La connexion n'est pas encore configurée. Vos données restent sur cet appareil.",auth_short:"Saisissez un e-mail et un mot de passe d'au moins 6 caractères.",google:"Continuer avec Google",untitled:"Sans titre",c_food:"Repas et boissons",c_transport:"Transport",c_shopping:"Shopping",c_groceries:"Courses",c_fun:"Loisirs",c_bills:"Factures",c_health:"Santé",c_other:"Autre",i_salary:"Salaire",i_allowance:"Argent de poche",i_gift:"Cadeau",i_other:"Autre revenu"},
+hi:{tab_today:"आज",tab_month:"इस महीने",wallet:"बटुए में नकद",out_today:"आज खर्च",in_today:"आज मिला",daily_budget:"दैनिक बजट",left:"बाकी",list_today:"आज का हिसाब",no_records:"अभी कोई एंट्री नहीं",scan:"फोटो",manual:"हाथ से",scanning:"रसीद पढ़ी जा रही है...",add_title:"एंट्री जोड़ें",edit_title:"एंट्री बदलें",expense:"खर्च",income:"आमदनी",amount:"राशि",merchant:"दुकान / नोट",category:"श्रेणी",date:"तारीख",cancel:"रद्द करें",save:"सेव करें",delete:"हटाएँ",confirm_delete:"यह एंट्री हटानी है?",conf:"भरोसा {p}%",check:"कृपया जाँचें",scan_fail:"पढ़ नहीं पाया। कृपया राशि भरें ({e})",dup_warn:"पिछले 30 मिनट में इसी राशि की एंट्री ({m}) है। यह दोहराई हुई हो सकती है।",cur_warn:"रसीद {d} नहीं, {c} जैसी लगती है। कृपया राशि जाँचें।",m_income:"आमदनी",m_expense:"खर्च",m_net:"बचत",by_cat:"श्रेणी के अनुसार खर्च",daily:"रोज़ाना",budgets:"श्रेणी बजट",budgets_empty:"अभी कोई बजट नहीं। सेटिंग्स में तय करें।",records:"एंट्रियाँ",export:"CSV निर्यात करें",ai_title:"AI सुझाव",ai_btn:"इस महीने के सुझाव लें",ai_loading:"सोच रहा है...",ai_fail:"AI अभी व्यस्त है। थोड़ी देर बाद फिर कोशिश करें।",budget_alert:"{c}: बजट का {p}% इस्तेमाल हुआ",budget_hit:"{c} इस महीने के बजट के {p}% पर है",settings:"सेटिंग्स",language:"भाषा",theme:"थीम",th_auto:"ऑटो",th_light:"हल्का",th_dark:"गहरा",th_cream:"क्रीम",th_olive:"जैतून",th_rose:"गुलाबी",th_plum:"बैंगनी",start_cash:"बटुए में शुरुआती नकद",month_budgets:"श्रेणी का मासिक बजट",month_budgets_hint:"सीमा न चाहिए तो खाली छोड़ें। 80% पर पट्टी पीली और 100% पर लाल हो जाती है।",close:"बंद करें",account:"खाता",login:"लॉग इन",signup:"साइन अप",logout:"लॉग आउट",email:"ईमेल",password:"पासवर्ड (कम से कम 6 अक्षर)",signed_as:"{e} से लॉग इन",sync_now:"अभी सिंक करें",s_syncing:"सिंक हो रहा है...",s_ok:"सिंक हो गया",s_fail:"सिंक नहीं हुआ: {e}",verify_email:"लगभग हो गया। ईमेल में वेरिफिकेशन लिंक दबाएँ, फिर लॉग इन करें।",auth_off:"लॉग इन अभी सेट नहीं है। आपका डेटा इसी डिवाइस में सेव है।",auth_short:"ईमेल और कम से कम 6 अक्षर का पासवर्ड डालें।",google:"Google से जारी रखें",untitled:"बिना नाम",c_food:"खान-पान",c_transport:"यात्रा",c_shopping:"खरीदारी",c_groceries:"किराना",c_fun:"मनोरंजन",c_bills:"बिल",c_health:"स्वास्थ्य",c_other:"अन्य",i_salary:"वेतन",i_allowance:"जेब खर्च",i_gift:"उपहार",i_other:"अन्य आमदनी"},
+ja:{tab_today:"今日",tab_month:"今月",wallet:"財布の現金",out_today:"今日の支出",in_today:"今日の収入",daily_budget:"1日の予算",left:"残り",list_today:"今日の明細",no_records:"記録はまだありません",scan:"撮影",manual:"手入力",scanning:"レシートを読み取り中...",add_title:"記録を追加",edit_title:"記録を編集",expense:"支出",income:"収入",amount:"金額",merchant:"店名 / メモ",category:"カテゴリ",date:"日付",cancel:"キャンセル",save:"保存",delete:"削除",confirm_delete:"この記録を削除しますか？",conf:"信頼度 {p}%",check:"確認してください",scan_fail:"読み取れませんでした。金額を入力してください（{e}）",dup_warn:"30分以内に同じ金額（{m}）の記録があります。重複かもしれません。",cur_warn:"レシートは {d} ではなく {c} のようです。金額を確認してください。",m_income:"収入",m_expense:"支出",m_net:"収支",by_cat:"カテゴリ別の支出",daily:"日別",budgets:"カテゴリ別予算",budgets_empty:"予算はまだありません。設定で追加してください。",records:"記録",export:"CSVを書き出す",ai_title:"AIのアドバイス",ai_btn:"今月のアドバイスを見る",ai_loading:"考え中...",ai_fail:"AIが混み合っています。少し待ってからもう一度お試しください。",budget_alert:"{c}：予算の {p}% を使用",budget_hit:"{c} は今月の予算の {p}% に達しました",settings:"設定",language:"言語",theme:"テーマ",th_auto:"自動",th_light:"ライト",th_dark:"ダーク",th_cream:"クリーム",th_olive:"オリーブ",th_rose:"ローズ",th_plum:"プラム",start_cash:"財布の開始時の現金",month_budgets:"カテゴリ別の月間予算",month_budgets_hint:"空欄なら上限なし。80%で黄色、100%で赤になります。",close:"閉じる",account:"アカウント",login:"ログイン",signup:"新規登録",logout:"ログアウト",email:"メールアドレス",password:"パスワード（6文字以上）",signed_as:"{e} でログイン中",sync_now:"今すぐ同期",s_syncing:"同期中...",s_ok:"同期しました",s_fail:"同期に失敗しました：{e}",verify_email:"あと少しです。メールの確認リンクを押してから、ログインしてください。",auth_off:"ログインはまだ設定されていません。データはこの端末に保存されます。",auth_short:"メールアドレスと6文字以上のパスワードを入力してください。",google:"Googleで続ける",untitled:"無題",c_food:"飲食",c_transport:"交通",c_shopping:"買い物",c_groceries:"食料品",c_fun:"娯楽",c_bills:"公共料金",c_health:"医療",c_other:"その他",i_salary:"給料",i_allowance:"お小遣い",i_gift:"贈り物",i_other:"その他の収入"},
+ko:{tab_today:"오늘",tab_month:"이번 달",wallet:"지갑 속 현금",out_today:"오늘 지출",in_today:"오늘 수입",daily_budget:"일일 예산",left:"남음",list_today:"오늘 내역",no_records:"아직 기록이 없어요",scan:"촬영",manual:"직접 입력",scanning:"영수증 읽는 중...",add_title:"기록 추가",edit_title:"기록 수정",expense:"지출",income:"수입",amount:"금액",merchant:"상호 / 메모",category:"카테고리",date:"날짜",cancel:"취소",save:"저장",delete:"삭제",confirm_delete:"이 기록을 삭제할까요?",conf:"신뢰도 {p}%",check:"확인해 주세요",scan_fail:"읽지 못했어요. 금액을 입력해 주세요 ({e})",dup_warn:"30분 안에 같은 금액({m})의 기록이 있어요. 중복일 수 있어요.",cur_warn:"영수증이 {d}이(가) 아니라 {c}처럼 보여요. 금액을 확인해 주세요.",m_income:"수입",m_expense:"지출",m_net:"순수익",by_cat:"카테고리별 지출",daily:"일별",budgets:"카테고리 예산",budgets_empty:"아직 예산이 없어요. 설정에서 추가하세요.",records:"기록",export:"CSV 내보내기",ai_title:"AI 조언",ai_btn:"이번 달 조언 받기",ai_loading:"생각 중...",ai_fail:"AI가 바빠요. 잠시 후 다시 시도해 주세요.",budget_alert:"{c}: 예산의 {p}% 사용",budget_hit:"{c}이(가) 이번 달 예산의 {p}%에 도달했어요",settings:"설정",language:"언어",theme:"테마",th_auto:"자동",th_light:"라이트",th_dark:"다크",th_cream:"크림",th_olive:"올리브",th_rose:"로즈",th_plum:"플럼",start_cash:"지갑 시작 현금",month_budgets:"카테고리별 월 예산",month_budgets_hint:"비워 두면 한도가 없어요. 80%에서 노란색, 100%에서 빨간색이 돼요.",close:"닫기",account:"계정",login:"로그인",signup:"회원가입",logout:"로그아웃",email:"이메일",password:"비밀번호 (6자 이상)",signed_as:"{e}(으)로 로그인됨",sync_now:"지금 동기화",s_syncing:"동기화 중...",s_ok:"동기화됨",s_fail:"동기화 실패: {e}",verify_email:"거의 끝났어요. 이메일의 인증 링크를 누른 뒤 로그인해 주세요.",auth_off:"로그인이 아직 설정되지 않았어요. 데이터는 이 기기에 저장돼요.",auth_short:"이메일과 6자 이상의 비밀번호를 입력해 주세요.",google:"Google로 계속하기",untitled:"제목 없음",c_food:"식비",c_transport:"교통",c_shopping:"쇼핑",c_groceries:"장보기",c_fun:"여가",c_bills:"공과금",c_health:"의료",c_other:"기타",i_salary:"월급",i_allowance:"용돈",i_gift:"선물",i_other:"기타 수입"}
 };
+const LANGS = { en:"English", zh:"繁體中文", cn:"简体中文", th:"ไทย", es:"Español", fr:"Français", hi:"हिन्दी", ja:"日本語", ko:"한국어" };
+const LOC   = { en:"en-US", zh:"zh-TW", cn:"zh-CN", th:"th-TH-u-ca-gregory", es:"es-ES", fr:"fr-FR", hi:"hi-IN", ja:"ja-JP", ko:"ko-KR" };
+const LANGNAME = { en:"English", zh:"Traditional Chinese", cn:"Simplified Chinese", th:"Thai", es:"Spanish", fr:"French", hi:"Hindi", ja:"Japanese", ko:"Korean" };
+const THEMES = { auto:["th_auto","linear-gradient(135deg,#eef3f1 50%,#0e1b18 50%)"], light:["th_light","#eef3f1"], dark:["th_dark","#0e1b18"], cream:["th_cream","#fbf3dc"], olive:["th_olive","#eaeddb"], rose:["th_rose","#f7e9ea"], plum:["th_plum","#17101f"] };
+const THEME_COLOR = { light:"#eef3f1", dark:"#0e1b18", cream:"#fbf3dc", olive:"#eaeddb", rose:"#f7e9ea", plum:"#17101f" };
+
+// ===== CATEGORIES (keys stay English so old data keeps working) =====
+const EXP = {
+  "Food & Beverage":{k:"c_food",color:"#f59e0b"}, "Transport":{k:"c_transport",color:"#38bdf8"},
+  "Shopping":{k:"c_shopping",color:"#a78bfa"}, "Groceries":{k:"c_groceries",color:"#34d399"},
+  "Entertainment":{k:"c_fun",color:"#f472b6"}, "Bills":{k:"c_bills",color:"#fb7185"},
+  "Health":{k:"c_health",color:"#2dd4bf"}, "Other":{k:"c_other",color:"#94a3b8"}
+};
+const INC = {
+  "Salary":{k:"i_salary",color:"#22c55e"}, "Allowance":{k:"i_allowance",color:"#14b8a6"},
+  "Gift":{k:"i_gift",color:"#ec4899"}, "OtherIncome":{k:"i_other",color:"#84cc16"}
+};
+
+// ===== HELPERS =====
 const $ = id => document.getElementById(id);
-const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const fmt = n => Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const pad = n => String(n).padStart(2, "0");
+const dayKey = d => { const x = new Date(d); return x.getFullYear() + "-" + pad(x.getMonth() + 1) + "-" + pad(x.getDate()); };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
 
-let settings = load("sb_settings", { budget: 500, currency: "THB" });
-let entries  = load("sb_entries", []);
-let pendingImg = null;
-
-const dayKey = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`; };
-const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
-
-$("today").textContent = new Date().toLocaleDateString("zh-TW", { month:"long", day:"numeric", weekday:"long" });
-$("fCat").innerHTML = Object.entries(CATS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join("");
-
-// ---------- 圖表 ----------
-let weekChart, catChart;
-function render() {
-  const today = dayKey(new Date());
-  const todays = entries.filter(e => dayKey(e.ts) === today);
-  const spent = todays.reduce((s,e) => s + e.amount, 0);
-  const left = settings.budget - spent;
-  const pct = settings.budget > 0 ? Math.min(100, spent / settings.budget * 100) : 0;
-
-  $("spent").textContent = fmt(spent);
-  $("cur").textContent = settings.currency;
-  $("left").textContent = fmt(left);
-  $("left").className = "text-xl font-semibold " + (left < 0 ? "text-rose-400" : "text-emerald-400");
-  $("budget").textContent = fmt(settings.budget);
-  $("pct").textContent = Math.round(spent / (settings.budget || 1) * 100) + "%";
-  const bar = $("bar");
-  bar.style.width = pct + "%";
-  bar.className = "bar h-full rounded-full " + (pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-400");
-
-  // 近 7 天
-  const days = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d; });
-  const totals = days.map(d => entries.filter(e => dayKey(e.ts) === dayKey(d)).reduce((s,e) => s + e.amount, 0));
-  $("weekTotal").textContent = fmt(totals.reduce((a,b) => a+b, 0)) + " " + settings.currency;
-  const labels = days.map(d => d.toLocaleDateString("zh-TW", { weekday:"short" }));
-  const colors = totals.map(t => t > settings.budget ? "#fb7185" : "#34d399");
-  if (weekChart) weekChart.destroy();
-  weekChart = new Chart($("weekChart"), {
-    type: "bar",
-    data: { labels, datasets: [{ data: totals, backgroundColor: colors, borderRadius: 6 }] },
-    options: { plugins: { legend: { display:false } }, scales: { x:{ ticks:{color:"#94a3b8"}, grid:{display:false} }, y:{ ticks:{color:"#94a3b8"}, grid:{color:"#334155"} } } }
-  });
-
-  // 分類
-  const byCat = {};
-  todays.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
-  const keys = Object.keys(byCat);
-  $("catEmpty").classList.toggle("hidden", keys.length > 0);
-  if (catChart) catChart.destroy();
-  catChart = new Chart($("catChart"), {
-    type: "doughnut",
-    data: { labels: keys.map(k => CATS[k]?.label || k), datasets: [{ data: keys.map(k => byCat[k]), backgroundColor: keys.map(k => CATS[k]?.color || "#94a3b8"), borderWidth: 0 }] },
-    options: { plugins: { legend: { display:false } }, cutout: "65%" }
-  });
-  $("catLegend").innerHTML = keys.map(k =>
-    `<li class="flex justify-between"><span><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${CATS[k]?.color}"></span>${CATS[k]?.label || k}</span><span class="text-slate-300">${fmt(byCat[k])}</span></li>`).join("");
-
-  // 明細
-  $("listEmpty").classList.toggle("hidden", todays.length > 0);
-  $("list").innerHTML = todays.slice().reverse().map(e => `
-    <li class="py-2 flex items-center justify-between">
-      <div class="min-w-0">
-        <p class="truncate">${esc(e.merchant || "未命名")}</p>
-        <p class="text-xs text-slate-400">${CATS[e.category]?.label || e.category} · ${new Date(e.ts).toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"})}</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="font-semibold">${fmt(e.amount)} <span class="text-xs text-slate-400">${e.currency}</span></span>
-        <button data-del="${e.id}" class="text-slate-500 text-lg">×</button>
-      </div>
-    </li>`).join("");
+// ===== STATE =====
+const DEF = { budget: 500, currency: "THB", startCash: 0, catBudgets: {}, u: 0 };
+let settings = Object.assign({}, DEF, load("sb_settings", {}));
+if (!settings.catBudgets || typeof settings.catBudgets !== "object") settings.catBudgets = {};
+let entries = load("sb_entries", []).filter(e => e && e.id).map(e => Object.assign({ type: "expense" }, e));
+let deleted = load("sb_deleted", []);
+let lang = lsGet("sb_lang");
+if (!T[lang]) {
+  const n = (navigator.language || "en").toLowerCase();
+  lang = n.startsWith("zh") ? (/(cn|sg|hans)/.test(n) ? "cn" : "zh") : (Object.keys(T).find(k => k === n.slice(0, 2)) || "en");
 }
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+let theme = lsGet("sb_theme");
+if (!THEMES[theme]) theme = "auto";
+let tab = "today", mOff = 0, pendingImg = null, editingId = null, mType = "expense";
+let weekChart = null, catChart = null;
 
-$("list").addEventListener("click", e => {
-  const id = e.target.dataset.del;
-  if (!id) return;
-  entries = entries.filter(x => x.id !== id);
-  save("sb_entries", entries); render();
-});
+function t(k, v) {
+  let s = (T[lang] && T[lang][k]) || T.en[k] || k;
+  if (v) for (const x in v) s = s.split("{" + x + "}").join(v[x]);
+  return s;
+}
+const catInfo = e => (e.type === "income" ? INC : EXP)[e.category] || { k: e.type === "income" ? "i_other" : "c_other", color: "#94a3b8" };
 
-// ---------- 圖片壓縮 ----------
+function persist() {
+  save("sb_entries", entries); save("sb_deleted", deleted); save("sb_settings", settings);
+  schedulePush();
+}
+
+// ===== LANGUAGE + THEME =====
+function applyLang() {
+  document.documentElement.lang = ({ zh: "zh-Hant", cn: "zh-Hans" })[lang] || lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  $("today").textContent = new Date().toLocaleDateString(LOC[lang], { month: "long", day: "numeric", weekday: "long" });
+  $("selLang").innerHTML = Object.keys(LANGS).map(k => `<option value="${k}"${k === lang ? " selected" : ""}>${LANGS[k]}</option>`).join("");
+  renderThemes(); renderCatBudgetInputs(); renderAuth();
+  if ($("modal").classList.contains("open")) { fillCats(mType, $("fCat").value); $("mTitle").textContent = t(editingId ? "edit_title" : "add_title"); }
+  render();
+}
+function renderThemes() {
+  $("themes").innerHTML = Object.keys(THEMES).map(k =>
+    `<button data-theme="${k}" class="${k === theme ? "on" : ""}"><i style="background:${THEMES[k][1]}"></i>${esc(t(THEMES[k][0]))}</button>`).join("");
+}
+function applyTheme() {
+  if (theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.content = THEME_COLOR[theme] || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? THEME_COLOR.dark : THEME_COLOR.light);
+  renderThemes(); render();
+}
+
+// ===== RENDER =====
+function monthSpent(cat, y, m) {
+  return entries.filter(e => e.type !== "income" && e.category === cat && new Date(e.ts).getFullYear() === y && new Date(e.ts).getMonth() === m).reduce((s, e) => s + e.amount, 0);
+}
+function rowHtml(e, withDate) {
+  const ci = catInfo(e), inc = e.type === "income", d = new Date(e.ts);
+  const when = (withDate ? d.toLocaleDateString(LOC[lang], { month: "short", day: "numeric" }) + " " : "") + d.toLocaleTimeString(LOC[lang], { hour: "2-digit", minute: "2-digit" });
+  return `<li class="row" data-id="${esc(e.id)}"><span class="dot" style="background:${ci.color}"></span><div class="rmain"><p class="rt">${esc(e.merchant || t("untitled"))}</p><p class="rs">${esc(t(ci.k))} · ${esc(when)}</p></div><span class="amt${inc ? " in" : ""}">${inc ? "+" : "-"}${fmt(e.amount)}</span></li>`;
+}
+function render() {
+  const sum = (arr, ty) => arr.filter(e => e.type === ty).reduce((s, e) => s + e.amount, 0);
+  const wallet = (Number(settings.startCash) || 0) + sum(entries, "income") - sum(entries, "expense");
+  const todays = entries.filter(e => dayKey(e.ts) === dayKey(Date.now()));
+  const out = sum(todays, "expense"), inn = sum(todays, "income");
+  const left = settings.budget - out;
+  const pct = settings.budget > 0 ? out / settings.budget * 100 : 0;
+  $("cur").textContent = settings.currency;
+  $("wallet").textContent = fmt(wallet);
+  $("wallet").style.color = wallet < 0 ? "var(--err)" : "";
+  $("outToday").textContent = fmt(out); $("inToday").textContent = fmt(inn);
+  $("spentB").textContent = fmt(out); $("budgetB").textContent = fmt(settings.budget);
+  $("leftB").textContent = fmt(left); $("leftB").className = "mid " + (left < 0 ? "bad" : "ok");
+  const dbar = $("dbar"); dbar.style.width = Math.min(100, pct) + "%";
+  dbar.className = pct >= 100 ? "bad" : pct >= 80 ? "warn" : "";
+  $("list").innerHTML = todays.slice().sort((a, b) => b.ts - a.ts).map(e => rowHtml(e, false)).join("");
+  $("listEmpty").hidden = todays.length > 0;
+
+  // category budget alerts (current month)
+  const now = new Date(), al = [];
+  for (const k in EXP) {
+    const b = Number(settings.catBudgets[k]) || 0;
+    if (b <= 0) continue;
+    const p = Math.round(monthSpent(k, now.getFullYear(), now.getMonth()) / b * 100);
+    if (p >= 80) al.push(`<div class="alert${p >= 100 ? " bad" : ""}">${esc(t("budget_alert", { c: t(EXP[k].k), p }))}</div>`);
+  }
+  $("alerts").innerHTML = al.join("");
+  if (tab === "month") renderMonth();
+}
+function renderMonth() {
+  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + mOff);
+  const y = base.getFullYear(), m = base.getMonth();
+  $("monthLabel").textContent = base.toLocaleDateString(LOC[lang], { year: "numeric", month: "long" });
+  $("mNext").disabled = mOff >= 0;
+  const list = entries.filter(e => { const d = new Date(e.ts); return d.getFullYear() === y && d.getMonth() === m; });
+  const inn = list.filter(e => e.type === "income").reduce((s, e) => s + e.amount, 0);
+  const out = list.filter(e => e.type !== "income").reduce((s, e) => s + e.amount, 0);
+  $("mIn").textContent = fmt(inn); $("mOut").textContent = fmt(out);
+  $("mNet").textContent = (inn - out >= 0 ? "+" : "") + fmt(inn - out);
+  $("mNet").className = "mid " + (inn - out >= 0 ? "ok" : "bad");
+
+  const byCat = {};
+  list.filter(e => e.type !== "income").forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
+  const keys = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a]);
+  $("catEmpty").hidden = keys.length > 0;
+  $("catLegend").innerHTML = keys.map(k => { const c = EXP[k] || EXP.Other; return `<li><span><span class="sw" style="background:${c.color}"></span>${esc(t(c.k))}</span><span>${fmt(byCat[k])}</span></li>`; }).join("");
+
+  const dim = new Date(y, m + 1, 0).getDate();
+  const dOut = Array(dim).fill(0), dIn = Array(dim).fill(0);
+  list.forEach(e => { const d = new Date(e.ts).getDate() - 1; (e.type === "income" ? dIn : dOut)[d] += e.amount; });
+
+  if (typeof Chart !== "undefined") {
+    const ink = css("--mute"), line = css("--line");
+    if (catChart) catChart.destroy();
+    catChart = new Chart($("catChart"), { type: "doughnut",
+      data: { labels: keys.map(k => t((EXP[k] || EXP.Other).k)), datasets: [{ data: keys.map(k => byCat[k]), backgroundColor: keys.map(k => (EXP[k] || EXP.Other).color), borderWidth: 0 }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: "62%" } });
+    if (weekChart) weekChart.destroy();
+    weekChart = new Chart($("dayChart"), { type: "bar",
+      data: { labels: dOut.map((_, i) => i + 1), datasets: [
+        { label: t("m_expense"), data: dOut, backgroundColor: css("--accent"), borderRadius: 4 },
+        { label: t("m_income"), data: dIn, backgroundColor: css("--ok"), borderRadius: 4 } ] },
+      options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: ink, boxWidth: 12 } } },
+        scales: { x: { ticks: { color: ink, maxTicksLimit: 10 }, grid: { display: false } }, y: { ticks: { color: ink }, grid: { color: line } } } } });
+  }
+
+  const rows = [];
+  for (const k in EXP) {
+    const b = Number(settings.catBudgets[k]) || 0;
+    if (b <= 0) continue;
+    const s = byCat[k] || 0, p = s / b * 100;
+    rows.push(`<div class="brow"><div class="top"><span>${esc(t(EXP[k].k))}</span><span class="${p >= 100 ? "bad" : p >= 80 ? "warnc" : ""}">${fmt(s)} / ${fmt(b)} (${Math.round(p)}%)</span></div><div class="bar"><div class="${p >= 100 ? "bad" : p >= 80 ? "warn" : ""}" style="width:${Math.min(100, p)}%"></div></div></div>`);
+  }
+  $("budgetList").innerHTML = rows.join("");
+  $("budgetEmpty").hidden = rows.length > 0;
+
+  $("mList").innerHTML = list.slice().sort((a, b) => b.ts - a.ts).map(e => rowHtml(e, true)).join("");
+  $("mEmpty").hidden = list.length > 0;
+}
+
+// ===== TABS + LISTS =====
+function setTab(n) {
+  tab = n;
+  $("vToday").hidden = n !== "today"; $("vMonth").hidden = n !== "month";
+  $("tabToday").classList.toggle("on", n === "today"); $("tabMonth").classList.toggle("on", n === "month");
+  render();
+}
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+$("mPrev").onclick = () => { mOff--; render(); };
+$("mNext").onclick = () => { if (mOff < 0) { mOff++; render(); } };
+["list", "mList"].forEach(id => $(id).addEventListener("click", ev => {
+  const li = ev.target.closest(".row"); if (!li) return;
+  const e = entries.find(x => x.id === li.dataset.id); if (e) openModal(e, { id: e.id });
+}));
+
+// ===== ENTRY MODAL =====
+function fillCats(type, sel) {
+  const src = type === "income" ? INC : EXP;
+  $("fCat").innerHTML = Object.keys(src).map(k => `<option value="${k}">${esc(t(src[k].k))}</option>`).join("");
+  $("fCat").value = src[sel] ? sel : (type === "income" ? "OtherIncome" : "Other");
+}
+function setType(ty) {
+  mType = ty;
+  $("segExp").classList.toggle("on", ty === "expense"); $("segInc").classList.toggle("on", ty === "income");
+  fillCats(ty, $("fCat").value);
+}
+$("segExp").onclick = () => setType("expense");
+$("segInc").onclick = () => setType("income");
+
+function openModal(d, o) {
+  o = o || {};
+  editingId = o.id || null;
+  $("mTitle").textContent = t(editingId ? "edit_title" : "add_title");
+  mType = d.type === "income" ? "income" : "expense";
+  fillCats(mType, d.category); setType(mType); $("fCat").value = (mType === "income" ? INC : EXP)[d.category] ? d.category : (mType === "income" ? "OtherIncome" : "Other");
+  $("fAmount").value = d.amount == null ? "" : d.amount;
+  $("fMerchant").value = d.merchant || "";
+  $("fDate").value = dayKey(d.ts || Date.now());
+  $("btnDelete").hidden = !editingId;
+  const c = Number(d.confidence || 0);
+  $("conf").hidden = !(o.scan);
+  $("conf").textContent = c ? t("conf", { p: Math.round(c * 100) }) : t("check");
+  $("conf").className = "chip " + (c >= .8 ? "good" : "mid");
+  if (pendingImg) { $("preview").src = pendingImg; $("preview").style.display = "block"; } else $("preview").style.display = "none";
+  const w = o.warn || (!editingId && mType === "expense" ? dupWarning(Number(d.amount), d.merchant) : "");
+  $("warn").textContent = w || ""; $("warn").hidden = !w;
+  $("modal").classList.add("open");
+}
+function closeModal() { $("modal").classList.remove("open"); pendingImg = null; editingId = null; }
+$("btnCancel").onclick = closeModal;
+$("btnManual").onclick = () => { pendingImg = null; openModal({ amount: "", category: "Food & Beverage", type: "expense" }); };
+function dupWarning(amount, merchant) {
+  if (!amount) return "";
+  const hit = entries.find(e => e.type !== "income" && Math.abs(e.amount - amount) < 0.01 && Date.now() - e.ts < 30 * 60 * 1000);
+  return hit ? t("dup_warn", { m: hit.merchant || t("untitled") }) : "";
+}
+$("btnSave").onclick = () => {
+  const amount = parseFloat($("fAmount").value);
+  if (!(amount > 0)) { $("fAmount").focus(); return; }
+  const dv = $("fDate").value || dayKey(Date.now());
+  const old = editingId ? entries.find(x => x.id === editingId) : null;
+  let ts;
+  if (old && dayKey(old.ts) === dv) ts = old.ts;
+  else if (dv === dayKey(Date.now())) ts = Date.now();
+  else { const p = dv.split("-").map(Number), n = new Date(); ts = new Date(p[0], p[1] - 1, p[2], n.getHours(), n.getMinutes()).getTime(); }
+  const data = { ts, amount, type: mType, merchant: $("fMerchant").value.trim(), category: $("fCat").value, u: Date.now() };
+  if (old) Object.assign(old, data);
+  else entries.push(Object.assign({ id: uid(), currency: settings.currency }, data));
+  persist(); closeModal(); render();
+  if (mType === "expense") budgetToast(data.category, new Date(ts));
+};
+$("btnDelete").onclick = () => {
+  if (!editingId || !confirm(t("confirm_delete"))) return;
+  entries = entries.filter(x => x.id !== editingId);
+  if (!deleted.includes(editingId)) deleted.push(editingId);
+  persist(); closeModal(); render();
+};
+function budgetToast(cat, d) {
+  const b = Number(settings.catBudgets[cat]) || 0; if (b <= 0) return;
+  const p = Math.round(monthSpent(cat, d.getFullYear(), d.getMonth()) / b * 100);
+  if (p >= 80) toast(t("budget_hit", { c: t(EXP[cat].k), p }));
+}
+let toastTimer;
+function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 3500); }
+
+// ===== PHOTO SCAN (same /api/analyze contract as before) =====
 function compress(file, max = 1280) {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+    const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
       const r = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      const dataUrl = c.toDataURL("image/jpeg", 0.82);
-      URL.revokeObjectURL(url);
-      resolve(dataUrl);
+      const u = c.toDataURL("image/jpeg", 0.82); URL.revokeObjectURL(url); resolve(u);
     };
-    img.onerror = reject;
-    img.src = url;
+    img.onerror = reject; img.src = url;
   });
 }
-
-// ---------- AI 辨識 ----------
 $("file").addEventListener("change", async ev => {
-  const f = ev.target.files[0];
-  ev.target.value = "";
+  const f = ev.target.files[0]; ev.target.value = "";
   if (!f) return;
-  $("loading").classList.replace("hidden", "flex");
+  $("loading").classList.add("open");
   try {
     pendingImg = await compress(f);
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: pendingImg.split(",")[1], mime: "image/jpeg", defaultCurrency: settings.currency })
-    });
+    const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: pendingImg.split(",")[1], mime: "image/jpeg", defaultCurrency: settings.currency }) });
     if (!res.ok) throw new Error((await res.text()) || res.status);
-    openModal(await res.json());
+    const d = await res.json();
+    const other = d.currency && String(d.currency).toUpperCase() !== settings.currency;
+    openModal({ amount: d.amount, merchant: d.merchant, category: d.category, confidence: d.confidence, type: "expense" },
+      { scan: true, warn: other ? t("cur_warn", { c: String(d.currency).toUpperCase(), d: settings.currency }) : "" });
   } catch (err) {
     console.error(err);
-    // 備案：辨識失敗也讓使用者手動補，Demo 不會卡住
-    openModal({ amount: "", currency: settings.currency, merchant: "", category: "Other", confidence: 0 }, "辨識失敗，請手動補上金額（" + (err.message || err).toString().slice(0,60) + "）");
-  } finally {
-    $("loading").classList.replace("flex", "hidden");
-  }
+    openModal({ amount: "", category: "Other", type: "expense" }, { scan: true, warn: t("scan_fail", { e: String(err.message || err).slice(0, 60) }) });
+  } finally { $("loading").classList.remove("open"); }
 });
 
-function openModal(d, warnMsg) {
-  $("fAmount").value = d.amount ?? "";
-  $("fCur").value = (d.currency || settings.currency).toUpperCase();
-  $("fMerchant").value = d.merchant || "";
-  $("fCat").value = CATS[d.category] ? d.category : "Other";
-  const c = Number(d.confidence ?? 0);
-  $("conf").textContent = c ? "信心 " + Math.round(c * 100) + "%" : "請確認";
-  $("conf").className = "text-xs px-2 py-0.5 rounded-full " + (c >= .8 ? "bg-emerald-900 text-emerald-300" : "bg-amber-900 text-amber-300");
-  if (pendingImg) { $("preview").src = pendingImg; $("preview").classList.remove("hidden"); } else $("preview").classList.add("hidden");
-  const w = warnMsg || dupWarning(Number(d.amount), d.merchant);
-  $("warn").textContent = w || ""; $("warn").classList.toggle("hidden", !w);
-  $("modal").classList.replace("hidden", "flex");
+// ===== SETTINGS =====
+function openSheet(id) { $(id).classList.add("open"); }
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => $(b.dataset.close).classList.remove("open"));
+$("btnSettings").onclick = () => { $("sCash").value = settings.startCash || ""; $("sBudget").value = settings.budget; renderCatBudgetInputs(); openSheet("sheetSet"); };
+$("selLang").onchange = e => { lang = e.target.value; lsSet("sb_lang", lang); applyLang(); };
+$("themes").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; theme = b.dataset.theme; lsSet("sb_theme", theme); applyTheme(); });
+function touchSettings() { settings.u = Date.now(); persist(); render(); }
+$("sCash").onchange = () => { settings.startCash = parseFloat($("sCash").value) || 0; touchSettings(); };
+$("sBudget").onchange = () => { const v = parseFloat($("sBudget").value); if (v > 0) settings.budget = v; touchSettings(); };
+function renderCatBudgetInputs() {
+  $("catBudgets").innerHTML = Object.keys(EXP).map(k =>
+    `<div class="cb"><span>${esc(t(EXP[k].k))}</span><input type="number" min="0" step="1" inputmode="decimal" data-cb="${esc(k)}" value="${settings.catBudgets[k] || ""}"></div>`).join("");
 }
-const closeModal = () => { $("modal").classList.replace("flex", "hidden"); pendingImg = null; };
-$("btnCancel").onclick = closeModal;
-$("btnManual").onclick = () => { pendingImg = null; openModal({ amount:"", currency: settings.currency, category:"Food & Beverage", confidence:0 }); };
+$("catBudgets").addEventListener("change", e => {
+  const k = e.target.dataset.cb; if (!k) return;
+  const v = parseFloat(e.target.value);
+  if (v > 0) settings.catBudgets[k] = v; else delete settings.catBudgets[k];
+  touchSettings();
+});
 
-// 簡單重複偵測：30 分鐘內同金額
-function dupWarning(amount) {
-  if (!amount) return "";
-  const hit = entries.find(e => Math.abs(e.amount - amount) < 0.01 && Date.now() - e.ts < 30 * 60 * 1000);
-  return hit ? `⚠️ 30 分鐘內已有一筆相同金額（${hit.merchant || "未命名"}），可能是重複，請確認。` : "";
+// ===== CSV =====
+function csvCell(v) {
+  let s = String(v == null ? "" : v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
-
-$("btnSave").onclick = () => {
-  const amount = parseFloat($("fAmount").value);
-  if (!(amount > 0)) { $("fAmount").focus(); return; }
-  entries.push({
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-    ts: Date.now(), amount,
-    currency: $("fCur").value.trim().toUpperCase() || settings.currency,
-    merchant: $("fMerchant").value.trim(),
-    category: $("fCat").value
+function buildCsv() {
+  const head = ["date", "time", "type", "category", "merchant", "amount", "currency"];
+  const rows = entries.slice().sort((a, b) => a.ts - b.ts).map(e => {
+    const d = new Date(e.ts);
+    return [dayKey(d), pad(d.getHours()) + ":" + pad(d.getMinutes()), e.type, e.category, e.merchant || "", e.amount, e.currency || settings.currency];
   });
-  save("sb_entries", entries);
-  closeModal(); render();
+  return "﻿" + [head].concat(rows).map(r => r.map(csvCell).join(",")).join("\r\n");
+}
+$("btnCsv").onclick = () => {
+  const blob = new Blob([buildCsv()], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = "snapbudget-" + dayKey(Date.now()) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 };
 
-// ---------- 設定 ----------
-$("btnSettings").onclick = () => {
-  const b = prompt("每日預算金額：", settings.budget);
-  if (b === null) return;
-  const c = prompt("幣別（例如 THB、TWD、USD）：", settings.currency);
-  const nb = parseFloat(b);
-  if (nb > 0) settings.budget = nb;
-  if (c && c.trim()) settings.currency = c.trim().toUpperCase();
-  save("sb_settings", settings); render();
+// ===== AI TIPS (sends only totals, no personal data) =====
+$("btnAi").onclick = async () => {
+  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + mOff);
+  const y = base.getFullYear(), m = base.getMonth();
+  const list = entries.filter(e => { const d = new Date(e.ts); return d.getFullYear() === y && d.getMonth() === m; });
+  if (!list.length) { $("tips").textContent = t("no_records"); return; }
+  const byCat = {};
+  list.filter(e => e.type !== "income").forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
+  const inn = list.filter(e => e.type === "income").reduce((s, e) => s + e.amount, 0);
+  const out = Object.values(byCat).reduce((s, v) => s + v, 0);
+  const summary = {
+    month: y + "-" + pad(m + 1), currency: settings.currency, income: inn, expenses: out,
+    dailyBudget: settings.budget, daysWithRecords: new Set(list.map(e => dayKey(e.ts))).size,
+    spendingByCategory: byCat, monthlyCategoryBudgets: settings.catBudgets
+  };
+  const system = "You are a friendly personal finance coach for a cash-wallet tracker. Give 3 short, specific, practical tips based on the numbers. Do not use markdown or headings. Reply in " + LANGNAME[lang] + ".";
+  $("btnAi").disabled = true; $("tips").textContent = t("ai_loading");
+  try {
+    const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "Monthly summary (JSON): " + JSON.stringify(summary), system }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.text) throw new Error(j.error || res.status);
+    $("tips").textContent = j.text;
+  } catch (e) { console.error(e); $("tips").textContent = t("ai_fail"); }
+  finally { $("btnAi").disabled = false; }
 };
 
-render();
+// ===== LOGIN + CLOUD SYNC (Supabase table user_data) =====
+let sb = null, user = null, syncing = false, again = false, pushTimer = null, asString = false, syncState = "";
+try { if (window.supabase && SUPABASE_KEY && SUPABASE_KEY.indexOf("PASTE") !== 0) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { sb = null; }
+
+function authMsg(msg, bad) { const el = $("authMsg"); el.textContent = msg || ""; el.style.color = bad ? "var(--err)" : "var(--mute)"; }
+function renderAuth() {
+  $("authOff").hidden = !!sb; $("authOut").hidden = !sb || !!user; $("authIn").hidden = !sb || !user;
+  $("googleRow").hidden = !ENABLE_GOOGLE;
+  if (user) $("whoami").textContent = t("signed_as", { e: user.email || "" });
+  if (user && syncState) authMsg(syncState.msg, syncState.bad);
+  $("btnAccount").style.borderColor = user ? "var(--accent)" : "";
+}
+function setSync(kind, e) {
+  syncState = kind === "syncing" ? { msg: t("s_syncing") } : kind === "ok" ? { msg: t("s_ok") } : { msg: t("s_fail", { e: String(e || "").slice(0, 80) }), bad: true };
+  renderAuth();
+}
+$("btnAccount").onclick = () => { authMsg(""); renderAuth(); openSheet("sheetAuth"); };
+async function doAuth(mode) {
+  if (!sb) return;
+  const email = $("aEmail").value.trim(), pw = $("aPass").value;
+  if (!email || pw.length < 6) { authMsg(t("auth_short"), true); return; }
+  authMsg("...");
+  const r = mode === "signup" ? await sb.auth.signUp({ email, password: pw }) : await sb.auth.signInWithPassword({ email, password: pw });
+  if (r.error) { authMsg(r.error.message, true); return; }
+  if (mode === "signup" && !(r.data && r.data.session)) { authMsg(t("verify_email")); return; }
+  authMsg(""); $("aPass").value = ""; $("sheetAuth").classList.remove("open");
+}
+$("btnLogin").onclick = () => doAuth("login");
+$("btnSignup").onclick = () => doAuth("signup");
+$("btnLogout").onclick = async () => { if (sb) await sb.auth.signOut(); syncState = ""; authMsg(""); };
+$("btnSync").onclick = () => syncNow();
+$("btnGoogle").onclick = () => { if (sb) sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin } }); };
+if (sb) {
+  sb.auth.getSession().then(r => { user = (r.data && r.data.session && r.data.session.user) || null; renderAuth(); if (user) syncNow(); });
+  sb.auth.onAuthStateChange((ev, s) => {
+    const u = (s && s.user) || null, changed = (u && u.id) !== (user && user.id);
+    user = u; renderAuth();
+    if (user && changed) setTimeout(syncNow, 0);
+  });
+}
+function schedulePush() { if (!sb || !user) return; clearTimeout(pushTimer); pushTimer = setTimeout(syncNow, 800); }
+
+async function cloudGet(k) {
+  const r = await sb.from("user_data").select("data_value").eq("user_id", user.id).eq("data_key", k).maybeSingle();
+  if (r.error) throw r.error;
+  let v = r.data && r.data.data_value;
+  if (typeof v === "string") { try { v = JSON.parse(v); } catch (e) {} }
+  return v == null ? null : v;
+}
+async function cloudSet(k, v) {
+  const write = async val => {
+    const now = new Date().toISOString();
+    const up = await sb.from("user_data").update({ data_value: val, updated_at: now }).eq("user_id", user.id).eq("data_key", k).select("data_key");
+    if (up.error) return up.error;
+    if (up.data && up.data.length) return null;
+    const ins = await sb.from("user_data").insert({ user_id: user.id, data_key: k, data_value: val, updated_at: now });
+    return ins.error || null;
+  };
+  const err = await write(asString ? JSON.stringify(v) : v);
+  if (err && !asString) { const e2 = await write(JSON.stringify(v)); if (!e2) { asString = true; return; } }
+  if (err) throw err;
+}
+async function syncNow() {
+  if (!sb || !user) return;
+  if (syncing) { again = true; return; }
+  syncing = true; setSync("syncing");
+  try {
+    const ce = await cloudGet("snapbudget:entries"), cd = await cloudGet("snapbudget:deleted"), cs = await cloudGet("snapbudget:settings");
+    const del = new Set(deleted.concat(Array.isArray(cd) ? cd : []));
+    const map = new Map();
+    (Array.isArray(ce) ? ce : []).concat(entries).forEach(e => {
+      if (!e || !e.id || del.has(e.id)) return;
+      const o = map.get(e.id);
+      if (!o || (e.u || e.ts) >= (o.u || o.ts)) map.set(e.id, Object.assign({ type: "expense" }, e));
+    });
+    entries = Array.from(map.values()).sort((a, b) => a.ts - b.ts);
+    deleted = Array.from(del);
+    if (cs && typeof cs === "object" && (cs.u || 0) > (settings.u || 0)) settings = Object.assign({}, DEF, cs);
+    save("sb_entries", entries); save("sb_deleted", deleted); save("sb_settings", settings);
+    render();
+    await cloudSet("snapbudget:entries", entries);
+    await cloudSet("snapbudget:deleted", deleted);
+    await cloudSet("snapbudget:settings", settings);
+    setSync("ok");
+  } catch (e) { console.error(e); setSync("fail", e && e.message); }
+  finally { syncing = false; if (again) { again = false; schedulePush(); } }
+}
+
+// ===== START =====
+applyTheme();
+applyLang();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
